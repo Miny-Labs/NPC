@@ -7,7 +7,7 @@ import path from 'path';
 // Use the Gemini class from the ADK with correct model
 const model = new Gemini({ 
     apiKey: process.env.GEMINI_API_KEY,
-    model: 'gemini-2.0-flash-exp' // Latest model supported by A2A
+    model: process.env.GEMINI_MODEL || 'gemini-flash-latest' // Use environment variable
 });
 
 export class Planner extends LlmAgent {
@@ -90,9 +90,10 @@ export class Planner extends LlmAgent {
         };
     }
 
-    async plan(observation: any, goal?: string): Promise<any> {
+    async plan(observation: any, goal?: string, personalityContext?: string): Promise<any> {
         console.log('Planner: Received observation', observation);
         console.log('Planner: Goal:', goal);
+        console.log('Planner: Personality context available:', !!personalityContext);
 
         try {
             // Create a planning prompt with available tools
@@ -101,7 +102,9 @@ export class Planner extends LlmAgent {
             ).join('\n');
 
             const prompt = `
-You are an autonomous NPC agent planning actions based on the current game state.
+You are an autonomous NPC agent planning actions based on the current game state and your personality.
+
+${personalityContext || 'No personality context available.'}
 
 Current Observation:
 ${JSON.stringify(observation, null, 2)}
@@ -111,13 +114,15 @@ Goal: ${goal || 'Participate actively in the game'}
 Available Tools:
 ${toolDescriptions}
 
-Based on the observation and goal, plan the next action. Consider:
-1. Safety: Only use actions that are allowed by BehaviorController
-2. Strategy: Choose actions that advance toward the goal
-3. Risk: Consider potential losses and gains
-4. Timing: Ensure actions are appropriate for the current game state
+Based on your personality, memories, observation and goal, plan the next action. Consider:
+1. Personality: Act according to your established traits and past experiences
+2. Relationships: Consider your relationships with other players/NPCs
+3. Safety: Only use actions that are allowed by BehaviorController
+4. Strategy: Choose actions that advance toward the goal while staying in character
+5. Risk: Consider potential losses and gains based on your personality (greedy vs cautious)
+6. Timing: Ensure actions are appropriate for the current game state
 
-Respond with a specific action plan including the tool to use and parameters.
+Respond with a specific action plan including the tool to use and parameters that reflects your personality.
 `;
 
             // Use the model to generate a plan
